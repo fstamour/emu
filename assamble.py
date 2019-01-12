@@ -81,7 +81,8 @@ def assamble_line(line):
 
 def assamble_lines(code):
     for line in code.split('\n'):
-        if remove_comment(line).strip():
+        line = remove_comment(line).strip()
+        if line:
             assambled = assamble_line(line.strip())
             yield assambled
 
@@ -115,6 +116,9 @@ def test_assamble():
     assamble("label:")
     obj = assamble("label: jmp label")
     link(obj)
+
+    assamble("cmp 13 # Enter")
+    assamble("putc 11 # Linefeed")
 
 ###############################################################
 

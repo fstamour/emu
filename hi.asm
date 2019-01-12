@@ -1,4 +1,4 @@
-#!./main.py
+#!./emu
 
 # Print 'hi' and stop
 

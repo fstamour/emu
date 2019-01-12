@@ -23,6 +23,7 @@ def getchar():
 def putchar(value):
     "Take an ascii value and print it."
     sys.stdout.write(chr(value))
+    sys.stdout.flush()
 
 def check(passed):
     "Print the traceback if passed is false, print a dot (without newline) otherwise."

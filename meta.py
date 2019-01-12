@@ -18,6 +18,7 @@ operations = [
         'halt',
         ['getc putc'],
         ['getc putc', 'r'],
+        'putc i',
         ['not neg popcount clz'],
         ['not neg popcount clz', 'r'],
         ['add sub mul div mod'],
