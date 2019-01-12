@@ -4,7 +4,7 @@ import sys
 from utils import copy
 from core import run, reset
 import core
-from assamble import assamble
+from assamble import assamble, link
 
 def slurp(path):
     with open(path, 'r') as file:
@@ -16,10 +16,11 @@ def run_file(path):
 
     # assamble (compile) into object code
     obj = assamble(source_code)
+    binary = link(obj)
 
     # initialise the virtual machine
     reset()
-    copy(obj, core.ram)
+    copy(binary, core.ram)
 
     # !
     run() 

@@ -69,7 +69,7 @@ def set_flag(flag, value):
     if trace and flags[flag] != p:
         print("Set flag {0} to {1}".format(flag, p))
     flags[flag] = p
-    
+
 def set_register_or_flag(name, value):
     "Name can either be a register or a flag, value must be an int."
     if name in register_names:
@@ -88,9 +88,9 @@ def acc(value=None):
         return get_register('a')
     set_register('a', value)
 
-########################################################### 
-################### Operations ############################ 
-########################################################### 
+###########################################################
+################### Operations ############################
+###########################################################
 
 # -[x] add
 # -[x] and
@@ -167,11 +167,45 @@ def op_load(address='a', register='a'):
 def op_mov(value='a', register='a'):
     set_register(register, coerce_value(value))
 
-def test(value='a'):
+def op_test(value='a'):
     x = coerce_value(value)
     set_flag('zf', x == 0)
     set_flag('pf', bin(x)[2:].count('1') % 2 == 0)
     set_flag('sf', x < 0)
+
+def op_cmp(x, y='a'):
+    op_test(coerce_value(x) - coerce_value(y))
+
+def op_jmp(value='a'):
+    "unconditional jump"
+    op_mov(value, 'ip')
+
+def jump_if(doc, condition):
+    def conditional_jump(value='a'):
+        doc
+        if condition():
+            if trace:
+                print("Taking the jump")
+            op_mov(value, 'ip')
+        else:
+            if trace:
+                print("Not taking the jump")
+    return conditional_jump
+
+op_jo = jump_if("jump if overflow", lambda: get_flag('of'))
+op_jno = jump_if("jump if not overflow", lambda: not get_flag('of'))
+op_jpe = jump_if("jump if parity is even", lambda: get_flag('pf'))
+op_jpo = jump_if("jump if parity is odd", lambda: not get_flag('pf'))
+
+op_jz = jump_if("jump if zero", lambda: get_flag('zf'))
+op_jnz = jump_if("jump if not zero", lambda: not get_flag('zf'))
+op_jl = jump_if("jump if less", lambda: get_flag('zf') != get_flag('of'))
+op_jle = jump_if("jump if less or equal",
+        lambda: get_flag('zf') != get_flag('of') or get_flag('zf'))
+op_jge = jump_if("jump if greater or equal",
+        lambda: get_flag('sf') == get_flag('of'))
+op_jz = jump_if("jump if accumulator is zero",
+        lambda: get_register('a') == 0)
 
 ########################################################
 
@@ -368,6 +402,40 @@ def test_op_xor():
     op_xor('b')
     check(registers['a'] == 1)
 
+def test_cmp():
+    reset()
+    registers['a'] = 10
+    op_cmp(10)
+    check(get_flag('zf'))
+    check(not get_flag('of'))
+
+    reset()
+    registers['a'] = 10
+    op_cmp(5)
+    check(not get_flag('zf'))
+    check(get_flag('sf'))
+
+    reset()
+    registers['a'] = 10
+    op_cmp(15)
+    check(not get_flag('zf'))
+    check(not get_flag('sf'))
+
+def test_jmp():
+    reset()
+    op_jmp(42)
+    check(registers['ip'] == 42)
+
+def test_jz():
+    reset()
+    op_jz()
+    check(registers['ip'] == 0)
+
+    reset()
+    flags['zf'] = True
+    op_jz(42)
+    check(registers['ip'] == 42)
+
 def test_operations():
     test_op_not()
     test_op_neg()
@@ -386,6 +454,10 @@ def test_operations():
     test_op_or()
     test_op_and()
     test_op_xor()
+
+    test_cmp()
+    test_jmp()
+    test_jz()
     print()
 
 ########################################################
@@ -401,9 +473,10 @@ def get_operation_by_name(name):
 def run():
     opcode = -1
     instruction = []
-    while opcode != 0:
+    while True:
         opcode = get_ram(get_register('ip'))
         if trace:
+            print()
             print("Read opcode {0}".format(opcode))
         instruction.append(opcode)
         code = disassamble_insctruction(instruction)
@@ -413,18 +486,21 @@ def run():
             inc_ip()
             continue
 
-        if trace: 
+        if trace:
             print("Running instruction: ", code)
-
 
         [op, *arguments] = code
         if op == 'halt':
             return
         fn = get_operation_by_name(op)
+
+        old_ip = get_register('ip')
         fn(*arguments)
 
         instruction = []
-        inc_ip()
+
+        if old_ip == get_register('ip'):
+            inc_ip()
 
 def test_run():
     # global trace
@@ -437,7 +513,7 @@ def test_run():
     mov 'i'
     putc
     halt
-    """) 
+    """)
     copy(obj, ram)
 
     run()

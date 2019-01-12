@@ -83,3 +83,7 @@ def copy(source, destination, destination_start = 0):
         destination[destination_start + i] = s
         i = i + 1
 
+def complement(fn):
+    def comp(x):
+        return not fn(x)
+    return comp

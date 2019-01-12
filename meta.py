@@ -44,7 +44,15 @@ operations = [
         'mov r',
         'mov r r',
         'mov i r',
-        ]
+        'test r',
+        'cmp i',
+        'cmp r',
+        'cmp i, r',
+        'cmp r, r',
+        'jmp i',
+        'jmp r',
+        ['jo jno jz jnz jl jle jge jpe jpo jaz', 'i']
+    ]
 
 def expand(spec):
     """Used to flatten the "operations" list"""
@@ -63,3 +71,4 @@ operations = list(chain(*map(expand, operations)))
 
 if __name__ == '__main__':
     print_dotted_list(operations)
+    print("There are {0} different operations.".format(len(operations)))

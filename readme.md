@@ -34,8 +34,7 @@
  * call
  * ret
  * rcr rcl rol ror
- * cmp
- * jmp, jXX (two for each flags)
+ * overflow flag
 
 ## Hello world
 
