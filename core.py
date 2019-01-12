@@ -204,7 +204,7 @@ op_jle = jump_if("jump if less or equal",
         lambda: get_flag('zf') != get_flag('of') or get_flag('zf'))
 op_jge = jump_if("jump if greater or equal",
         lambda: get_flag('sf') == get_flag('of'))
-op_jz = jump_if("jump if accumulator is zero",
+op_jaz = jump_if("jump if accumulator is zero",
         lambda: get_register('a') == 0)
 
 ########################################################
