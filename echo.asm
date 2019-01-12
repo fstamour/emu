@@ -1,4 +1,5 @@
 #!./main.py
+# Print back what the user enters until he enters 'q'
 
 loop:
   getc
