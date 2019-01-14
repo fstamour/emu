@@ -42,12 +42,18 @@ ip, sb and sp behaves as unsigned integers.
  * call
  * ret
  * rcr rcl rol ror
- * overflow flag
+ * carry flag
 
-## Hello world
+### Implemented but has no automated tests
 
-It's possible to run a assembly code that print 'hi' in the terminal: 
+ * getc, putc
+ * div, mod
+ * jo, jno
+ * jpo, jpe
+ * jaz
+ * shl, shr
 
-```sh
-./hi.asm
-```
+## Examples
+
+See the folder `examples`.
+

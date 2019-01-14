@@ -6,7 +6,7 @@
 import sys
 from assamble import register_names, flag_names, opcodes, codec
 from assamble import assamble, disassamble_insctruction
-from utils import getchar, putchar, check, fix_overflow, fix_underflow
+from utils import getchar, putchar, check, clamp, overflows
 from utils import popcount, count_leading_zeros, copy
 
 ram_size = 256
@@ -14,6 +14,18 @@ ram = None
 registers = None
 flags = None
 trace = False
+
+def with_trace(fn):
+    "decorator to enable some tracing during the tests"
+    def fn_with_trace():
+        global trace
+        old_trace = trace
+        trace = True
+        try:
+            fn()
+        finally:
+            trace = old_trace
+    return fn_with_trace
 
 def reset():
     global ram
@@ -125,6 +137,12 @@ def inc_ip(n=1):
 # -[x] sub
 # -[x] xor
 
+def set_flags(x):
+    "set the flags based on a given value"
+    set_flag('zf', x == 0)
+    set_flag('pf', bin(x)[2:].count('1') % 2 == 0)
+    set_flag('sf', x < 0)
+
 def unary_op(fn):
     def op(value='a', register='a'):
         x = coerce_value(value)
@@ -136,20 +154,29 @@ def binary_op(fn):
         x = coerce_value(value)
         y = get_register(register)
         result = fn(x, y)
-        result = fix_overflow(fix_underflow(result))
+        overflow_p = overflows(result)
+        result = clamp(result)
+        set_flags(result)
+        set_flag('of', overflow_p)
         set_register(register, result)
     return op
 
 ########################################################
 
 def op_getc(register='a'):
+    if trace:
+        print("Waiting for user input")
     set_register(register, getchar())
 
 def op_putc(value='a'):
-    putchar(coerce_value(value))
+    x = coerce_value(value)
+    if trace:
+        # if chr(x).isprintable():
+        print("About to print the char {0}".format(x))
+    putchar(x)
 
 op_not = unary_op(lambda x: ~x)
-op_neg = unary_op(lambda x: fix_overflow(fix_underflow(-x)))
+op_neg = unary_op(lambda x: clamp(-x))
 
 op_popcount = unary_op(popcount)
 op_clz = unary_op(count_leading_zeros)
@@ -177,14 +204,21 @@ def op_load(address='a', register='a'):
 def op_mov(value='a', register='a'):
     set_register(register, coerce_value(value))
 
-def op_test(value='a'):
-    x = coerce_value(value)
-    set_flag('zf', x == 0)
-    set_flag('pf', bin(x)[2:].count('1') % 2 == 0)
-    set_flag('sf', x < 0)
+def op_test(x, y='a'):
+    x = coerce_value(x)
+    y = coerce_value(y)
+    set_flags(x | y)
 
 def op_cmp(x, y='a'):
-    op_test(coerce_value(x) - coerce_value(y))
+    x = coerce_value(x)
+    y = coerce_value(y)
+    result = coerce_value(y) - coerce_value(x)
+    overflow_p = overflows(result)
+    result = clamp(result)
+    if trace:
+        print("The result of comparing {0} to {1} is {2}".format(y, x, result))
+    set_flags(result)
+    set_flag('of', overflow_p)
 
 def op_jmp(value='a'):
     "unconditional jump"
@@ -209,11 +243,9 @@ op_jpo = jump_if("jump if parity is odd", lambda: not get_flag('pf'))
 
 op_jz = jump_if("jump if zero", lambda: get_flag('zf'))
 op_jnz = jump_if("jump if not zero", lambda: not get_flag('zf'))
-op_jl = jump_if("jump if less", lambda: get_flag('zf') != get_flag('of'))
-op_jle = jump_if("jump if less or equal",
-        lambda: get_flag('zf') != get_flag('of') or get_flag('zf'))
-op_jge = jump_if("jump if greater or equal",
-        lambda: get_flag('sf') == get_flag('of'))
+op_jl = jump_if("jump if less", lambda: get_flag('sf'))
+op_jle = jump_if("jump if less or equal", lambda: get_flag('sf') or get_flag('zf'))
+op_jge = jump_if("jump if greater or equal", lambda: not get_flag('sf'))
 op_jaz = jump_if("jump if accumulator is zero",
         lambda: get_register('a') == 0)
 
@@ -226,6 +258,13 @@ def op_pop(register='a'):
     stack_pointer = inc('sp')
     x = get_ram(stack_pointer - 1)
     set_register(register, x)
+
+def op_call(value='a'):
+    op_push('ip')
+    op_jmp(coerce_value(value))
+
+def op_ret():
+    op_pop('ip')
 
 ########################################################
 
@@ -439,13 +478,13 @@ def test_cmp():
     registers['a'] = 10
     op_cmp(5)
     check(not get_flag('zf'))
-    check(get_flag('sf'))
+    check(not get_flag('sf'))
 
     reset()
     registers['a'] = 10
     op_cmp(15)
     check(not get_flag('zf'))
-    check(not get_flag('sf'))
+    check(get_flag('sf'))
 
 def test_jmp():
     reset()
@@ -462,6 +501,72 @@ def test_jz():
     op_jz(42)
     check(registers['ip'] == 42)
 
+def test_jl():
+    # a is greater than 0, not branching
+    reset()
+    registers['a'] = 10
+    op_cmp(0)
+    op_jl(33)
+    check(registers['ip'] == 0)
+
+    # a is lesser than 0, branching
+    reset()
+    registers['a'] = -10
+    op_cmp(0)
+    op_jl(33)
+    check(registers['ip'] == 33)
+
+    # a is equal 0, not branching
+    reset()
+    registers['a'] = 0
+    op_cmp(0)
+    op_jl(33)
+    check(registers['ip'] == 0)
+
+def test_jle():
+    # a is greater than 0, not branching
+    reset()
+    registers['a'] = 10
+    op_cmp(0)
+    op_jle(33)
+    check(registers['ip'] == 0)
+
+    # a is lesser than 0, branching
+    reset()
+    registers['a'] = -10
+    op_cmp(0)
+    op_jle(33)
+    check(registers['ip'] == 33)
+
+    # a is equal 0, branching
+    reset()
+    registers['a'] = 0
+    op_cmp(0)
+    op_jle(33)
+    check(registers['ip'] == 33)
+
+def test_jge():
+    # a is greater than 0, branching
+    reset()
+    registers['a'] = 10
+    op_cmp(0)
+    op_jge(33)
+    check(registers['ip'] == 33)
+
+    # a is lesser than 0, not branching
+    reset()
+    registers['a'] = -10
+    op_cmp(0)
+    op_jge(33)
+    check(registers['ip'] == 0)
+
+    # a is equal 0, branching
+    reset()
+    registers['a'] = 0
+    op_cmp(0)
+    op_jge(33)
+    check(registers['ip'] == 33)
+
 def test_push():
     reset()
     op_push(42)
@@ -475,6 +580,22 @@ def test_pop():
     op_pop()
     check(registers['a'] == 33)
     check(registers['sp'] == 255)
+
+def test_call():
+    reset()
+    registers['ip'] = 10
+    op_call(42)
+    check(registers['sp'] == 255)
+    check(registers['ip'] == 42)
+    check(ram[255] == 10)
+
+def test_ret():
+    reset()
+    registers['sp'] = 255
+    ram[255] = 10
+    op_ret()
+    check(registers['sp'] == 0)
+    check(registers['ip'] == 10)
 
 def test_operations():
     test_op_not()
@@ -498,9 +619,16 @@ def test_operations():
     test_cmp()
     test_jmp()
     test_jz()
+    test_jl()
+    test_jle()
+    test_jge()
 
     test_push()
     test_pop()
+
+    test_call()
+    test_ret()
+
     print()
 
 ########################################################

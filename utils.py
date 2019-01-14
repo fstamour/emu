@@ -1,6 +1,6 @@
 import sys
 import tty, termios
-import traceback 
+import traceback
 
 def print_dotted_list(lis):
     for i in lis:
@@ -53,6 +53,12 @@ assert fix_underflow(127) == 127
 assert fix_underflow(-128) == -128
 assert fix_underflow(0) == 0
 assert fix_underflow(-200) == 56
+
+def overflows(x):
+    return x < -255 or x > 254
+
+def clamp(x):
+    return fix_overflow(fix_underflow(x))
 
 def params(fn):
     "Get a list of tuples representing the arguments of a function."
