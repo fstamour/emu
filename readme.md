@@ -2,7 +2,7 @@
 
 > The machine is simple, not the implementation
 
-Implement an had-hoc 8-bits virtual machine, to help teach how computer works.
+Implements an had-hoc 8-bits virtual machine, to help teach how computer works.
 It includes it own assambler, linker and dissasambler.
 
 ## Registers (all 8 bits)
@@ -18,6 +18,9 @@ It includes it own assambler, linker and dissasambler.
 | zf | Zero Flag
 | sf | Sign Flag
 | of | Overflow Flag
+
+> Note: the registers a, b, c and d behaves as 2's complement integers, but
+ip, sb and sp behaves as unsigned integers.
 
 ## Instructions
 
