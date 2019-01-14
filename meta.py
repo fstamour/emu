@@ -9,10 +9,10 @@ from utils import print_dotted_list
 register_names = ['a', 'b', 'c', 'd', 'ip', 'sb', 'sp'] # 7 registers
 flag_names = ['cf', 'pf', 'zf', 'sf', 'of']             # 5 flags
                                                         # => 12
-# getc putc  
-# not neg popcount clz  
-# add sub mul div mod  
-# or and xor shl shr  
+# getc putc
+# not neg popcount clz
+# add sub mul div mod
+# or and xor shl shr
 # store load mov
 operations = [
         'halt',
@@ -52,7 +52,13 @@ operations = [
         'cmp r, r',
         'jmp i',
         'jmp r',
-        ['jo jno jz jnz jl jle jge jpe jpo jaz', 'i']
+        ['jo jno jz jnz jl jle jge jpe jpo jaz', 'i'],
+        'push i',
+        'push r',
+        'pop r',
+        'call i',
+        'call r',
+        'ret'
     ]
 
 def expand(spec):

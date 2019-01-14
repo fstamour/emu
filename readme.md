@@ -2,6 +2,9 @@
 
 > The machine is simple, not the implementation
 
+Implement an had-hoc 8-bits virtual machine, to help teach how computer works.
+It includes it own assambler, linker and dissasambler.
+
 ## Registers (all 8 bits)
 
 | Name | Description |
@@ -24,13 +27,15 @@
  * add sub mul div mod neg
  * not and or xor shl shr xor
  * halt
- * store
- * load
+ * store/load
+ * push/pop
+ * cmp
+ * test
+ * jmp
+ * jo jno jz jnz jl jle jge jpe jpo jaz (conditional jumps)
 
 ### Not implemented yet
 
- * push
- * pop
  * call
  * ret
  * rcr rcl rol ror

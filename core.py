@@ -80,13 +80,23 @@ def set_register_or_flag(name, value):
         raise NameError("Invalid register or flag name: \"{0}\"".format(name))
 
 def set_ram(address, value):
+    if trace:
+        print("Set memory address {0} to {1}".format(address, value))
     ram[coerce_value(address)] = coerce_value(value)
 
-def acc(value=None):
-    "Small helper, to use the accumulator register."
-    if value is None:
-        return get_register('a')
-    set_register('a', value)
+def inc(register, n=1):
+    "Increment a register, returning the new value"
+    new_value = (get_register(register) + n) % 256
+    set_register(register, new_value)
+    return new_value
+
+def dec(register, n=1):
+    "Decrement a register, returning the new value"
+    return inc(register, -n)
+
+def inc_ip(n=1):
+    "Increment the instruction pointer, returning the new value"
+    return inc('ip', n)
 
 ###########################################################
 ################### Operations ############################
@@ -145,7 +155,7 @@ op_popcount = unary_op(popcount)
 op_clz = unary_op(count_leading_zeros)
 
 op_add = binary_op(lambda x, y: x + y)
-op_sub = binary_op(lambda x, y: x - y)
+op_sub = binary_op(lambda x, y: y - x)
 op_mul = binary_op(lambda x, y: x * y)
 op_div = binary_op(lambda x, y: x / y)
 op_mod = binary_op(lambda x, y: x % y)
@@ -206,6 +216,16 @@ op_jge = jump_if("jump if greater or equal",
         lambda: get_flag('sf') == get_flag('of'))
 op_jaz = jump_if("jump if accumulator is zero",
         lambda: get_register('a') == 0)
+
+def op_push(value='a'):
+    x = coerce_value(value)
+    stack_pointer = dec('sp') # it grows downward
+    set_ram(stack_pointer, x)
+
+def op_pop(register='a'):
+    stack_pointer = inc('sp')
+    x = get_ram(stack_pointer - 1)
+    set_register(register, x)
 
 ########################################################
 
@@ -364,6 +384,12 @@ def test_op_add():
     op_add()
     check(registers['a'] == 0)
 
+def test_op_sub():
+    reset()
+    registers['a'] = 100
+    op_sub(50)
+    check(registers['a'] == 50)
+
 def test_op_mul():
     reset()
     registers['a'] = 5
@@ -436,6 +462,20 @@ def test_jz():
     op_jz(42)
     check(registers['ip'] == 42)
 
+def test_push():
+    reset()
+    op_push(42)
+    check(ram[255] == 42)
+    check(registers['sp'] == 255)
+
+def test_pop():
+    reset()
+    ram[254] = 33
+    registers['sp'] = 254
+    op_pop()
+    check(registers['a'] == 33)
+    check(registers['sp'] == 255)
+
 def test_operations():
     test_op_not()
     test_op_neg()
@@ -446,7 +486,7 @@ def test_operations():
     test_op_mov()
 
     test_op_add()
-    # test_op_sub()
+    test_op_sub()
     test_op_mul()
     # test_op_div()
     # test_op_mod()
@@ -458,13 +498,12 @@ def test_operations():
     test_cmp()
     test_jmp()
     test_jz()
+
+    test_push()
+    test_pop()
     print()
 
 ########################################################
-
-def inc_ip(n=1):
-    "Increment the instruction pointer"
-    set_register('ip', get_register('ip') + n)
 
 def get_operation_by_name(name):
     module = sys.modules[__name__]
